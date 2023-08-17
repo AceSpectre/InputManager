@@ -45,8 +45,6 @@ public class ManagerGenerator : ScriptableObject
 
     public void GenerateInputManager()
     {
-        //TODO Make using switch statements an option, autogenerate the old interface since it was far easier to use
-        
         indentCount = 0;
         string assetName = controlsAsset.name;
         StringBuilder classContent = new(@"using System;
@@ -65,8 +63,8 @@ using UnityEngine.InputSystem;
         classContent.AppendLine(indentation + $"public static {assetName} {assetName.ToLower()} = new();" + Environment.NewLine);
 
 
-        StringBuilder vector2MethodContent = new(indentation + "public static Vector2 GetVector2(string mapName, string actionName)" + Environment.NewLine + indentation + "{" + Environment.NewLine + "playercontrols.Enable();");
-        StringBuilder buttonMethodContent = new(indentation + "public static bool GetButton(string mapName, string actionName, bool held)" + Environment.NewLine + indentation + "{" + Environment.NewLine + "playercontrols.Enable();");
+        StringBuilder vector2MethodContent = new(indentation + "public static Vector2 GetVector2(string mapName, string actionName)" + Environment.NewLine + indentation + "{" + Environment.NewLine + indentation + $"\t{assetName.ToLower()}.Enable();" + Environment.NewLine);
+        StringBuilder buttonMethodContent = new(indentation + "public static bool GetButton(string mapName, string actionName, bool held)" + Environment.NewLine + indentation + "{" + Environment.NewLine + indentation + $"\t{assetName.ToLower()}.Enable();" + Environment.NewLine);
 
         SetIndentation(++indentCount);
 
@@ -121,8 +119,8 @@ using UnityEngine.InputSystem;
 
         SetIndentation(--indentCount);
 
-        vector2MethodContent.AppendLine("\t\treturn new Vector2(0f, 0f);" + Environment.NewLine + "\t\tplayercontrols.Disable();" + Environment.NewLine + indentation + "}");
-        buttonMethodContent.AppendLine("\t\treturn false;" + Environment.NewLine + "\t\tplayercontrols.Disable();" + Environment.NewLine + indentation + "}");
+        vector2MethodContent.AppendLine($"\t\t{ assetName.ToLower()}.Disable();" + Environment.NewLine + "\t\treturn new Vector2(0f, 0f);" + Environment.NewLine + indentation + "}");
+        buttonMethodContent.AppendLine($"\t\t{ assetName.ToLower()}.Disable();" + Environment.NewLine + "\t\treturn false;" + Environment.NewLine + indentation + "}");
 
         classContent.AppendLine(vector2MethodContent.ToString());
         classContent.AppendLine(buttonMethodContent.ToString());
