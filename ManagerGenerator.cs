@@ -12,12 +12,17 @@ public class ManagerGenerator : ScriptableObject
     public InputActionAsset controlsAsset;
     private string indentation;
     private int indentCount = 0;
-    private Dictionary<string, StringBuilder> methodBodies = new Dictionary<string, StringBuilder>
+
+    /// <summary>
+    /// Dictionary of method signatures 
+    /// </summary>
+    /// Note: Input type and action map sensitivity need to be specified in the name for the script to function
+    private Dictionary<string, StringBuilder> methodBodies = new()
     {
-        {"vector2MapSensitive", new StringBuilder() },
-        {"vector2Insensitive", new StringBuilder() },
-        {"buttonMapSensitive", new StringBuilder() },
-        {"buttonInsensitive", new StringBuilder() }
+        {"vector2MapSensitive", new StringBuilder("\tpublic static Vector2 GetVector2(string actionName, string mapName)") },
+        {"vector2Insensitive", new StringBuilder("\tpublic static Vector2 GetVector2(string actionName)") },
+        {"buttonMapSensitive", new StringBuilder("\tpublic static bool GetButton(string actionName, bool held, string mapName)") },
+        {"buttonInsensitive", new StringBuilder("\tpublic static bool GetButton(string actionName, bool held)") }
     };
 
     [CustomEditor(typeof(ManagerGenerator))]
@@ -85,6 +90,9 @@ public class ManagerGenerator : ScriptableObject
         UpdateBodies(updatedMethodBodies);
     }
 
+    /// <summary>
+    /// Updates the values of the dictionary of method bodies using t
+    /// </summary>
     private void UpdateBodies(Dictionary<string, StringBuilder> updatedMethodBodies)
     {
         foreach(var body in updatedMethodBodies)
@@ -93,20 +101,30 @@ public class ManagerGenerator : ScriptableObject
         }
     }
 
+    /// <summary>
+    /// Creates the beginning of a switch statement based on the current indentation
+    /// </summary>
+    /// <returns>Beginning of a switch statement with indentation</returns>
     private string BeginSwitchStatement(string switchValue)
     {
         return indentation + $"switch({switchValue})" + Environment.NewLine + indentation + "{";
     }
+
+    /// <summary>
+    /// Creates the end of a switch statement based on the current indentation
+    /// </summary>
+    /// <returns>End of a switch statement with indentation</returns>
     private string EndSwitchStatement()
     {
         return indentation + "\tdefault:" + Environment.NewLine + indentation + "\t\tbreak;" + Environment.NewLine + indentation + "}";
     }
 
 
-
+    /// <summary>
+    /// Generates the code for the input manager and writes it to InputManager.cs in the local directory
+    /// </summary>
     public void GenerateInputManager()
     {
-        Debug.Log("cunt");
         indentCount = 0;
         string assetName = controlsAsset.name;
         StringBuilder classContent = new(@"using System;
@@ -122,21 +140,11 @@ using UnityEngine.InputSystem;
 
         classContent.AppendLine(indentation + $"public static {assetName} {assetName.ToLower()} = new();" + Environment.NewLine);
 
-        methodBodies["vector2MapSensitive"].AppendLine(indentation + "public static Vector2 GetVector2(string actionName, string mapName)");
-        methodBodies["buttonMapSensitive"].AppendLine(indentation + "public static bool GetButton(string actionName, bool held, string mapName)");
-        methodBodies["vector2Insensitive"].AppendLine(indentation + "public static Vector2 GetVector2(string actionName)");
-        methodBodies["buttonInsensitive"].AppendLine(indentation + "public static bool GetButton(string actionName, bool held)");
-
         AddStringToAllBodies(Environment.NewLine + indentation + "{" + Environment.NewLine + indentation + $"\t{assetName.ToLower()}.Enable();" + Environment.NewLine);
-
-        //StringBuilder vector2MethodContent = new(indentation + "public static Vector2 GetVector2(string mapName, string actionName)" + Environment.NewLine + indentation + "{" + Environment.NewLine + indentation + $"\t{assetName.ToLower()}.Enable();" + Environment.NewLine);
-        //StringBuilder buttonMethodContent = new(indentation + "public static bool GetButton(string mapName, string actionName, bool held)" + Environment.NewLine + indentation + "{" + Environment.NewLine + indentation + $"\t{assetName.ToLower()}.Enable();" + Environment.NewLine);
 
         SetIndentation(++indentCount);
         
         AddStringToBodyGroup(true, BeginSwitchStatement("mapName"));
-        //vector2MethodContent.AppendLine(BeginSwitchStatement("mapName"));
-        //buttonMethodContent.AppendLine(BeginSwitchStatement("mapName"));
 
         AddStringToBodyGroup(false, BeginSwitchStatement("actionName"));
 
@@ -144,13 +152,11 @@ using UnityEngine.InputSystem;
         foreach (InputActionMap map in controlsAsset.actionMaps)
         {
             AddStringToBodyGroup(true, indentation + $"case \"{map.name}\":");
-            //vector2MethodContent.AppendLine(indentation + $"case \"{map.name}\":");
-            //buttonMethodContent.AppendLine(indentation + $"case \"{map.name}\":");
+
             SetIndentation(++indentCount);
 
             AddStringToBodyGroup(true, BeginSwitchStatement("actionName"));
-            //vector2MethodContent.AppendLine(BeginSwitchStatement("actionName"));
-            //buttonMethodContent.AppendLine(BeginSwitchStatement("actionName"));
+
             SetIndentation(++indentCount);
 
             foreach (InputAction action in map.actions)
@@ -160,25 +166,22 @@ using UnityEngine.InputSystem;
                 {
                     case "Button":
                         AddStringToBodyType("button", indentation + $"case \"{action.name}\":");
-                        //buttonMethodContent.AppendLine(indentation + $"case \"{action.name}\":");
 
                         SetIndentation(++indentCount);
                         currentAction = $"{assetName.ToLower().Replace(" ", "")}.{map.name.Replace(" ", "")}.{action.name.Replace(" ", "")}";
-                        //Debug.Log(currentAction);
-
+                        
                         AddStringToBodyType("button", indentation + $"return held ? {currentAction}.triggered : {currentAction}.ReadValue<bool>();");
-                        //buttonMethodContent.AppendLine(indentation + $"return held ? {currentAction}.triggered : {currentAction}.ReadValue<bool>();");
+
                         SetIndentation(--indentCount);
                         break;
                     case "Vector2":
                         AddStringToBodyType("vector2", indentation + $"case \"{action.name}\":");
-                        //vector2MethodContent.AppendLine(indentation + $"case \"{action.name}\":");
 
                         SetIndentation(++indentCount);
                         currentAction = $"{assetName.ToLower().Replace(" ", "")}.{map.name.Replace(" ", "")}.{action.name.Replace(" ", "")}";
 
                         AddStringToBodyType("vector2", indentation + $"return {currentAction}.ReadValue<Vector2>();");
-                        //vector2MethodContent.AppendLine(indentation + $"return {currentAction}.ReadValue<Vector2>();");
+
                         SetIndentation(--indentCount);
                         break;
                     default:
@@ -186,29 +189,21 @@ using UnityEngine.InputSystem;
                 }
             }
             SetIndentation(--indentCount);
-            AddStringToAllBodies(EndSwitchStatement());
-            AddStringToBodyGroup(true, Environment.NewLine + indentation + "break;");
 
-            //vector2MethodContent.AppendLine(EndSwitchStatement() + Environment.NewLine + indentation + "break;");
-            //.AppendLine(EndSwitchStatement() + Environment.NewLine + indentation + "break;");
+            AddStringToBodyGroup(true, EndSwitchStatement() + Environment.NewLine + indentation + "break;");
+
             SetIndentation(--indentCount);
         }
         string className = "InputManager";
         SetIndentation(--indentCount);
 
-        AddStringToBodyGroup(true, EndSwitchStatement());
-        //vector2MethodContent.AppendLine(EndSwitchStatement());
-        //buttonMethodContent.AppendLine(EndSwitchStatement());
+        AddStringToAllBodies(EndSwitchStatement());
 
         SetIndentation(--indentCount);
 
         AddStringToBodyType("vector2", $"\t\t{ assetName.ToLower()}.Disable();" + Environment.NewLine + "\t\treturn new Vector2(0f, 0f);" + Environment.NewLine + indentation + "}");
         AddStringToBodyType("button", $"\t\t{ assetName.ToLower()}.Disable();" + Environment.NewLine + "\t\treturn false;" + Environment.NewLine + indentation + "}");
-        //vector2MethodContent.AppendLine($"\t\t{ assetName.ToLower()}.Disable();" + Environment.NewLine + "\t\treturn new Vector2(0f, 0f);" + Environment.NewLine + indentation + "}");
-        //buttonMethodContent.AppendLine($"\t\t{ assetName.ToLower()}.Disable();" + Environment.NewLine + "\t\treturn false;" + Environment.NewLine + indentation + "}");
 
-        //classContent.AppendLine(vector2MethodContent.ToString());
-        //classContent.AppendLine(buttonMethodContent.ToString());
 
         foreach (var body in methodBodies)
         {
