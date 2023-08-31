@@ -5,18 +5,32 @@ using System;
 using System.IO;
 using System.Text;
 using System.Collections.Generic;
+//using System.Text.Json;
 
 [CreateAssetMenu(fileName = "InputManagerGenerator", menuName = "Manager Generator")]
 public class ManagerGenerator : ScriptableObject
 {
+    /// <summary>
+    /// The InputActionAsset to generate an InputManager for
+    /// </summary>
     public InputActionAsset controlsAsset;
+
+    /// <summary>
+    /// Current indentation
+    /// </summary>
     private string indentation;
+
+    /// <summary>
+    /// Current indentation amount
+    /// </summary>
     private int indentCount = 0;
 
     /// <summary>
     /// Dictionary of method signatures 
     /// </summary>
-    /// Note: Input type and action map sensitivity need to be specified in the name for the script to function
+    /// <remarks>
+    /// Input type and action map sensitivity need to be specified in the key for the script to function
+    /// </remarks>
     private Dictionary<string, StringBuilder> methodBodies = new()
     {
         {"vector2MapSensitive", new StringBuilder("\tpublic static Vector2 GetVector2(string actionName, string mapName)") },
@@ -25,6 +39,9 @@ public class ManagerGenerator : ScriptableObject
         {"buttonInsensitive", new StringBuilder("\tpublic static bool GetButton(string actionName, bool held)") }
     };
 
+    /// <summary>
+    /// Editor class for the ManagerGenerator class
+    /// </summary>
     [CustomEditor(typeof(ManagerGenerator))]
     public class ManagerGeneratorEditor : Editor
     {
@@ -41,11 +58,19 @@ public class ManagerGenerator : ScriptableObject
         }
     }
 
+    /// <summary>
+    /// Sets the current indentation amount
+    /// </summary>
+    /// <param name="indents">Numbers of indents to set "indentation" to</param>
     private void SetIndentation(int indents)
     {
         indentation = new string('\t', indents);
     }
 
+    /// <summary>
+    /// Appends a string to all method bodies
+    /// </summary>
+    /// <param name="content">Content to append to method bodies</param>
     private void AddStringToAllBodies(string content)
     {
         Dictionary<string, StringBuilder> updatedMethodBodies = new();
@@ -57,31 +82,17 @@ public class ManagerGenerator : ScriptableObject
         methodBodies = updatedMethodBodies;
     }
 
-    private void AddStringToBodyGroup(bool mapSensitive, string content)
+    /// <summary>
+    /// Appends a string to method bodies whose key contains the string "type"
+    /// </summary>
+    /// <param name="type">String to filter type of method body to append to</param>
+    /// <param name="content">Content to append to method bodies that match the filter</param>
+    private void AddStringToBodyType(string type, string content)
     {
         Dictionary<string, StringBuilder> updatedMethodBodies = new();
         foreach (var body in methodBodies)
         {
-            if (mapSensitive && body.Key.Contains("MapSensitive"))
-            {
-                updatedMethodBodies[body.Key] = body.Value;
-                updatedMethodBodies[body.Key].AppendLine(content);
-            }
-            else if (!mapSensitive && !body.Key.Contains("MapSensitive"))
-            {
-                updatedMethodBodies[body.Key] = body.Value;
-                updatedMethodBodies[body.Key].AppendLine(content);
-            }
-        }
-        UpdateBodies(updatedMethodBodies);
-    }
-
-    private void AddStringToBodyType(string inputType, string content)
-    {
-        Dictionary<string, StringBuilder> updatedMethodBodies = new();
-        foreach (var body in methodBodies)
-        {
-            if (body.Key.Contains(inputType))
+            if (body.Key.Contains(type))
             {
                 updatedMethodBodies[body.Key] = body.Value;
                 updatedMethodBodies[body.Key].AppendLine(content);
@@ -91,8 +102,9 @@ public class ManagerGenerator : ScriptableObject
     }
 
     /// <summary>
-    /// Updates the values of the dictionary of method bodies using t
+    /// Overwrites the values of the method body dictionary with values from a new dictionary
     /// </summary>
+    /// <param name="updatedMethodBodies">Dictionary of updated method bodies</param>
     private void UpdateBodies(Dictionary<string, StringBuilder> updatedMethodBodies)
     {
         foreach(var body in updatedMethodBodies)
@@ -119,6 +131,23 @@ public class ManagerGenerator : ScriptableObject
         return indentation + "\tdefault:" + Environment.NewLine + indentation + "\t\tbreak;" + Environment.NewLine + indentation + "}";
     }
 
+    /// <summary>
+    /// Inserts docstrings for each method into the dictionary from MethodDocstrings.json
+    /// </summary>
+    /// <param name="fileName">Filename of json containing docstrings</param>
+    private void AppendDocStrings(string fileName)
+    {
+        string scriptDirectory = Path.GetDirectoryName(AssetDatabase.GetAssetPath(MonoScript.FromScriptableObject(this)));
+
+        string filePath = Path.Combine(scriptDirectory, fileName);
+
+        string json = File.ReadAllText(filePath);
+        Dictionary<string, string> data = JsonUtility.FromJson<Dictionary<string, string>>(json);
+        foreach(var key in data)
+        {
+            Debug.Log(key.Value);
+        }
+    }
 
     /// <summary>
     /// Generates the code for the input manager and writes it to InputManager.cs in the local directory
@@ -127,59 +156,71 @@ public class ManagerGenerator : ScriptableObject
     {
         indentCount = 0;
         string assetName = controlsAsset.name;
+
+        //Set up the beginning of the InputManager class
         StringBuilder classContent = new(@"using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
-");
+");     
+        
+        //Append class signature
         classContent.AppendLine("public static class InputManager : object" + Environment.NewLine + "{");
 
         SetIndentation(++indentCount);
 
+        //Append the input action asset for the class to use
+        classContent.AppendLine(indentation + $"private static {assetName} {assetName.ToLower()} = new();" + Environment.NewLine);
 
-        classContent.AppendLine(indentation + $"public static {assetName} {assetName.ToLower()} = new();" + Environment.NewLine);
-
+        //Begin method content for all method bodies
         AddStringToAllBodies(Environment.NewLine + indentation + "{" + Environment.NewLine + indentation + $"\t{assetName.ToLower()}.Enable();" + Environment.NewLine);
 
         SetIndentation(++indentCount);
-        
-        AddStringToBodyGroup(true, BeginSwitchStatement("mapName"));
 
-        AddStringToBodyGroup(false, BeginSwitchStatement("actionName"));
+        //Begin switch statements for map sensitive and insensitive method bodies
+        AddStringToBodyType("MapSensitive", BeginSwitchStatement("mapName"));
+        AddStringToBodyType("Insensitive", BeginSwitchStatement("actionName"));
 
         SetIndentation(++indentCount);
+        //MapSensitive: For each action map, create a switch statment for each type of input
+        //Insensitive: Create a switch statement for each type of input
         foreach (InputActionMap map in controlsAsset.actionMaps)
         {
-            AddStringToBodyGroup(true, indentation + $"case \"{map.name}\":");
+            AddStringToBodyType("MapSensitive", indentation + $"case \"{map.name}\":");
 
             SetIndentation(++indentCount);
 
-            AddStringToBodyGroup(true, BeginSwitchStatement("actionName"));
+            AddStringToBodyType("MapSensitive", BeginSwitchStatement("actionName"));
 
             SetIndentation(++indentCount);
 
+            //For each action in the actionmap, create a switch statment for each type of action, adding to the respective bodies
             foreach (InputAction action in map.actions)
             {
                 string currentAction;
                 switch (action.expectedControlType)
                 {
                     case "Button":
+                        //Append the case line
                         AddStringToBodyType("button", indentation + $"case \"{action.name}\":");
 
                         SetIndentation(++indentCount);
                         currentAction = $"{assetName.ToLower().Replace(" ", "")}.{map.name.Replace(" ", "")}.{action.name.Replace(" ", "")}";
                         
+                        //Append the return line
                         AddStringToBodyType("button", indentation + $"return held ? {currentAction}.triggered : {currentAction}.ReadValue<bool>();");
 
                         SetIndentation(--indentCount);
                         break;
                     case "Vector2":
+                        //Append the case line
                         AddStringToBodyType("vector2", indentation + $"case \"{action.name}\":");
 
                         SetIndentation(++indentCount);
                         currentAction = $"{assetName.ToLower().Replace(" ", "")}.{map.name.Replace(" ", "")}.{action.name.Replace(" ", "")}";
 
+                        //Append the return line
                         AddStringToBodyType("vector2", indentation + $"return {currentAction}.ReadValue<Vector2>();");
 
                         SetIndentation(--indentCount);
@@ -190,7 +231,8 @@ using UnityEngine.InputSystem;
             }
             SetIndentation(--indentCount);
 
-            AddStringToBodyGroup(true, EndSwitchStatement() + Environment.NewLine + indentation + "break;");
+            //End the current switch statement in all map sensitive method bodies
+            AddStringToBodyType("MapSensitive", EndSwitchStatement() + Environment.NewLine + indentation + "break;");
 
             SetIndentation(--indentCount);
         }
@@ -201,33 +243,37 @@ using UnityEngine.InputSystem;
 
         SetIndentation(--indentCount);
 
+        //Add return paths for null values and print a debug statement if params were incorrect
+        //AddStringToAllBodies($"\t\tDebug.Log(\"{"Parameters returned no value"}\")");
         AddStringToBodyType("vector2", $"\t\t{ assetName.ToLower()}.Disable();" + Environment.NewLine + "\t\treturn new Vector2(0f, 0f);" + Environment.NewLine + indentation + "}");
         AddStringToBodyType("button", $"\t\t{ assetName.ToLower()}.Disable();" + Environment.NewLine + "\t\treturn false;" + Environment.NewLine + indentation + "}");
 
-
+        //For each method body, append the body to the class content
         foreach (var body in methodBodies)
         {
             classContent.AppendLine(body.Value.ToString());
-            Debug.Log("OKBUDDY");
         }
 
+        //End the class
         classContent.AppendLine("}" + Environment.NewLine);
 
-        // Get the directory path of the executing script
+        //Get the directory path of the executing script
         string scriptDirectory = Path.GetDirectoryName(AssetDatabase.GetAssetPath(MonoScript.FromScriptableObject(this)));
 
-        // Specify the file path to save the class
+        //Specify the file path to save the class
         string filePath = Path.Combine(scriptDirectory, className + ".cs");
 
         try
         {
-            // Create the class file and write the content
+            //Create the class file and write the content
             File.WriteAllText(filePath, classContent.ToString());
 
+            //Log that writing was successful
             Debug.Log("Class saved successfully!");
         }
         catch (Exception ex)
         {
+            //Log that writing failed
             Debug.LogError("Error occurred while saving the class: " + ex.Message);
         }
     }
