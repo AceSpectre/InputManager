@@ -14,6 +14,19 @@ Input manager is generated with several `public static` functions to get inputs 
 ```cs
 public static Vector2 GetVector2(string actionName, string mapName)
 ```
-This returns
+Returns a Vector2 input specified by its action name and map name
+```cs
+public static Vector2 GetVector2(string actionName)
+```
+Returns a Vector2 input only specified by action name
+
 ### GetVector2
+```cs
+public static bool GetButton(string actionName, bool held, string mapName)
+```
+Returns a bool input specified by its action name and map name, returning true only on the first frame of pressing if `!held` and returning true on every frame of pressing if `held`
+```cs
+public static bool GetButton(string actionName, bool held)
+```
+Returns a bool input only specified by action name, returning true only on the first frame of pressing if `!held` and returning true on every frame of pressing if `held`
 
