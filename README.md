@@ -1,6 +1,6 @@
 # InputManager
 System for easily and directly checking actions in unity input system
-* [Installation and Generation][installation-and-generation]
+* [Installation and Generation](#installation-and-generation)
 
 ## Installation and Generation
 
