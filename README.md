@@ -2,6 +2,7 @@
 A system to more easily and directly check actions within the unity input system
 * [Installation and Generation](#installation-and-generation)
 * [Using InputManager](#using-inputmanager)
+* [Current Flaws](#current-flaws)
 
 ## Installation and Generation
 Drag and drop the `ManagerGenerator.cs` file into your project. Use unity's new [input system](https://github.com/Unity-Technologies/InputSystem) to create an InputActionAsset and populate the maps and actions with whatever inputs you wish to use. **Make sure to click `Generate C# Class` on the InputActionAsset**
@@ -29,4 +30,7 @@ Returns a bool input specified by its action name and map name, returning true o
 public static bool GetButton(string actionName, bool held)
 ```
 Returns a bool input only specified by action name, returning true only on the first frame of pressing if `!held` and returning true on every frame of pressing if `held`
+
+## Current Flaws
+At the moment, this system only supports vector2 (pass through or value) and button input types. This sort of functionality is fine for hobby and gamejam projects that primarily use keyboard and mouse, but support for all control types would need to be added if using in a bigger project.
 
