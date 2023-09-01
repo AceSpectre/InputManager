@@ -1,6 +1,10 @@
 # InputManager
 System for easily and directly checking actions in unity input system
+* [Installation and Generation][installation-and-generation]
 
+## Installation and Generation
+
+## Using InputManager
 ```cs
 using System;
 
@@ -13,7 +17,3 @@ class Program
 }
 ```
 
-```javascript
-var s = "JavaScript syntax highlighting";
-alert(s);
-```
