@@ -5,13 +5,12 @@ using System;
 using System.IO;
 using System.Text;
 using System.Collections.Generic;
-//using System.Text.Json;
 
 [CreateAssetMenu(fileName = "InputManagerGenerator", menuName = "Manager Generator")]
 public class ManagerGenerator : ScriptableObject
 {
     /// <summary>
-    /// The InputActionAsset to generate an InputManager for
+    /// The InputActionAsset to generate an InputManager from
     /// </summary>
     public InputActionAsset controlsAsset;
 
@@ -33,11 +32,44 @@ public class ManagerGenerator : ScriptableObject
     /// </remarks>
     private Dictionary<string, StringBuilder> methodBodies = new()
     {
-        {"vector2MapSensitive", new StringBuilder("\tpublic static Vector2 GetVector2(string actionName, string mapName)") },
-        {"vector2Insensitive", new StringBuilder("\tpublic static Vector2 GetVector2(string actionName)") },
-        {"buttonMapSensitive", new StringBuilder("\tpublic static bool GetButton(string actionName, bool held, string mapName)") },
-        {"buttonInsensitive", new StringBuilder("\tpublic static bool GetButton(string actionName, bool held)") }
+        {"vector2MapSensitive", new StringBuilder(@"
+    /// <summary>
+	/// Gets the vector2 input value of an action, specified by its input action map
+	/// </summary>
+	/// <param name=""actionName"">Name of the action</param>
+	/// <param name=""mapName"">Name of the input action map</param>
+    /// <returns>Vector2 input of the action</returns>
+    public static Vector2 GetVector2(string actionName, string mapName)") },
+        {"vector2Insensitive", new StringBuilder(@"
+    /// <summary>
+	/// Gets the vector2 input value of first action of the specified name
+	/// </summary>
+	/// <remarks>
+	/// Only use this if input actions do not have any duplicate names across action maps
+	/// </remarks>
+	/// <param name=""actionName"">Name of the action</param>
+    /// <returns>Vector2 input of the action</returns>
+    public static Vector2 GetVector2(string actionName)") },
+        {"buttonMapSensitive", new StringBuilder(@"
+    /// <summary>
+	/// Gets the bool input value of an action, specified by its input action map
+	/// </summary>
+	/// <param name=""actionName"">Name of the action</param>
+    /// <param name=""held"">Check if the button is being held</param>
+    /// <param name=""mapName"">Name of the input action map</param>
+    /// <returns>Bool input of the action</returns>
+    public static bool GetButton(string actionName, bool held, string mapName)") },
+        {"buttonInsensitive", new StringBuilder(@"
+    /// <summary>
+	/// Gets the bool input value of first action of the specified name
+	/// </summary>
+	/// <param name=""actionName"">Name of the action</param>
+	/// <param name=""held"">Check if the button is being held</param>
+    /// <returns>Bool input of the action</returns>
+    public static bool GetButton(string actionName, bool held)") }
     };
+    // I would have kept the docstrings in a separate .json file but I couldnt get
+    // system.text.json to work in a unity project
 
     /// <summary>
     /// Editor class for the ManagerGenerator class
@@ -129,24 +161,6 @@ public class ManagerGenerator : ScriptableObject
     private string EndSwitchStatement()
     {
         return indentation + "\tdefault:" + Environment.NewLine + indentation + "\t\tbreak;" + Environment.NewLine + indentation + "}";
-    }
-
-    /// <summary>
-    /// Inserts docstrings for each method into the dictionary from MethodDocstrings.json
-    /// </summary>
-    /// <param name="fileName">Filename of json containing docstrings</param>
-    private void AppendDocStrings(string fileName)
-    {
-        string scriptDirectory = Path.GetDirectoryName(AssetDatabase.GetAssetPath(MonoScript.FromScriptableObject(this)));
-
-        string filePath = Path.Combine(scriptDirectory, fileName);
-
-        string json = File.ReadAllText(filePath);
-        Dictionary<string, string> data = JsonUtility.FromJson<Dictionary<string, string>>(json);
-        foreach(var key in data)
-        {
-            Debug.Log(key.Value);
-        }
     }
 
     /// <summary>
