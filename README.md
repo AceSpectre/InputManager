@@ -1,5 +1,5 @@
 # InputManager
-A system to more easily and directly check actions within the unity input system
+A better API to more easily and directly check actions within the unity input system
 * [Installation and Generation](#installation-and-generation)
 * [Using InputManager](#using-inputmanager)
 * [Current Flaws](#current-flaws)
